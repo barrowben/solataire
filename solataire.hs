@@ -99,10 +99,10 @@ getFreeReserveCount r = 8 - length r
 -- Move Aces from Reseve to Foundations
 moveResAcesFoundations :: Board -> Board
 moveResAcesFoundations (EOBoard f c r)
-    | ac `elem` r = EOBoard (addAceToFoundation f 0) c (filter (not.isAce) r)
-    | ad `elem` r = EOBoard (addAceToFoundation f 1) c (filter (not.isAce) r)
-    | ah `elem` r = EOBoard (addAceToFoundation f 2) c (filter (not.isAce) r)
-    | as `elem` r = EOBoard (addAceToFoundation f 3) c (filter (not.isAce) r)
+    | ac `elem` r = moveResAcesFoundations (EOBoard (addAceToFoundation f ac) c (filter (/=ac) r))
+    | ad `elem` r = moveResAcesFoundations (EOBoard (addAceToFoundation f ad) c (filter (/=ad) r))
+    | ah `elem` r = moveResAcesFoundations (EOBoard (addAceToFoundation f ah) c (filter (/=ah) r))
+    | as `elem` r = moveResAcesFoundations (EOBoard (addAceToFoundation f as) c (filter (/=as) r))
     | otherwise = EOBoard f c r
         where
             ac = Card Ace Clubs
@@ -110,19 +110,19 @@ moveResAcesFoundations (EOBoard f c r)
             ah = Card Ace Hearts
             as = Card Ace Spades
 
-addAceToFoundation :: [Foundation] -> Int -> [Foundation]
-addAceToFoundation f 0 = [Card Ace Clubs]:tail f
-addAceToFoundation f 1 = head f:[Card Ace Diamonds]:drop 2 f
-addAceToFoundation f 2 = head f:f!!1:[Card Ace Hearts]:drop 3 f
-addAceToFoundation f 3 = head f:f!!1:f!!2:[Card Ace Spades]:drop 4 f -- This is some black magic fuckery
+addAceToFoundation :: [Foundation] -> Card -> [Foundation]
+addAceToFoundation f (Card Ace Clubs) = [Card Ace Clubs]:tail f
+addAceToFoundation f (Card Ace Diamonds) = head f:[Card Ace Diamonds]:drop 2 f
+addAceToFoundation f (Card Ace Hearts) = head f:f!!1:[Card Ace Hearts]:drop 3 f
+addAceToFoundation f (Card Ace Spades) = head f:f!!1:f!!2:[Card Ace Spades]:drop 4 f -- This is some black magic
 
 -- moveColAcesFoundations :: Board -> Board
 -- moveColAcesFoundations (EOBoard f c r)
---     | isAce (last c!!0) = EOBoard (f ++ (last c!!1)) (init c) r
-    -- | isAce (last c!!1) = EOBoard (f ++ (last c!!2)) (init c) r
-    -- | isAce (last c!!2) = EOBoard (f ++ (last c!!1)) (init c) r
-    -- | isAce (last c!!3) = EOBoard (f ++ (last c!!1)) (init c) r
-    -- | isAce (last c!!4) = EOBoard (f ++ (last c!!1)) (init c) r
-    -- | isAce (last c!!5) = EOBoard (f ++ (last c!!1)) (init c) r
-    -- | isAce (last c!!6) = EOBoard (f ++ (last c!!1)) (init c) r
-    -- | isAce (last c!!7) = EOBoard (f ++ (last c!!1)) (init c) r
+-- | isAce (last c!!0) = EOBoard (f ++ (last c!!1)) (init c) r
+-- | isAce (last c!!1) = EOBoard (f ++ (last c!!2)) (init c) r
+-- | isAce (last c!!2) = EOBoard (f ++ (last c!!1)) (init c) r
+-- | isAce (last c!!3) = EOBoard (f ++ (last c!!1)) (init c) r
+-- | isAce (last c!!4) = EOBoard (f ++ (last c!!1)) (init c) r
+-- | isAce (last c!!5) = EOBoard (f ++ (last c!!1)) (init c) r
+-- | isAce (last c!!6) = EOBoard (f ++ (last c!!1)) (init c) r
+-- | isAce (last c!!7) = EOBoard (f ++ (last c!!1)) (init c) r
