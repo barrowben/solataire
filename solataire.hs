@@ -10,7 +10,6 @@ Date: 03.11.2021
 
 import System.Random
 import Data.List
-import GHC.Types (Bool(True))
 
 -- Define data structures
 data Pip = Ace | Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Queen | King
@@ -55,6 +54,7 @@ pack = [Card pip suit | pip <- [Ace .. King], suit <- [Clubs .. Spades]]
 -- Get successor card
 sCard :: Card -> Card
 sCard (Card p s)
+    -- | null = Card Ace s
     | p == King = Card Ace s
     | otherwise = Card (succ p) s
 
@@ -74,22 +74,7 @@ isKing :: Card -> Bool
 isKing (Card p _) | p == King = True
                   | otherwise = False
 
-isClubs :: Card -> Bool
-isClubs (Card _ s) | s == Clubs = True
-                   | otherwise = False
-
-isDiamonds :: Card -> Bool
-isDiamonds (Card _ s) | s == Diamonds = True
-                   | otherwise = False
-
-isHearts :: Card -> Bool
-isHearts (Card _ s) | s == Hearts = True
-                   | otherwise = False
-
-isSpades :: Card -> Bool
-isSpades (Card _ s) | s == Spades = True
-                   | otherwise = False
-
+-- Checks suit and returns an Int indicating to which Foundation pile it belongs
 checkSuit :: Card -> Int
 checkSuit (Card _ s)
     | s == Clubs = 0
@@ -114,7 +99,7 @@ startColumns d = [take 6 d,
                  take 6 (drop 36 d),
                  take 6 (drop 42 d)]
 
--- Take seed and generate random starting setup
+-- Initial board setup
 eODeal :: Int -> Board
 eODeal seed = EOBoard foundations columns reserve
     where
@@ -123,39 +108,53 @@ eODeal seed = EOBoard foundations columns reserve
         columns = startColumns shuffled
         reserve = [shuffled!!48, shuffled!!49, shuffled!!50, shuffled!!51]
 
--- IMPLEMENT ONCE HELPER FUNCTIONS DONE
 toFoundations :: Board -> Board
-toFoundations = moveResAcesFoundations.moveColAcesFoundations
+toFoundations (EOBoard f c r)
+    | clubsuc `elem` r || clubsuc `elem` (getBottomColCards c) =
+        toFoundations (EOBoard (addAnyFound f clubsuc) (removeFromColumns c clubsuc) (removeFromReserve r clubsuc))
+    | diamondsuc `elem` r || diamondsuc `elem` (getBottomColCards c) =
+        toFoundations (EOBoard (addAnyFound f diamondsuc) (removeFromColumns c diamondsuc) (removeFromReserve r diamondsuc))
+    | heartsuc `elem` r || heartsuc `elem` (getBottomColCards c) =
+        toFoundations (EOBoard (addAnyFound f heartsuc) (removeFromColumns c heartsuc) (removeFromReserve r heartsuc))
+    | spadesuc `elem` r || spadesuc `elem` (getBottomColCards c) =
+        toFoundations (EOBoard (addAnyFound f spadesuc) (removeFromColumns c spadesuc) (removeFromReserve r spadesuc))
+    | otherwise = EOBoard f c r         
+        where
+            clubsuc = if null (f!!0) then Card Ace Clubs else sCard (last (f!!0))
+            diamondsuc = if null (f!!1) then Card Ace Diamonds else sCard (last (f!!1))
+            heartsuc = if null (f!!2) then Card Ace Hearts else sCard (last (f!!2))
+            spadesuc = if null (f!!3) then Card Ace Spades else sCard (last (f!!3))
 
+-- Will be used later (Stage 2) to determine if stacks of card can be moved
 getFreeReserveCount :: Reserve -> Int
 getFreeReserveCount r = 8 - length r
 
 -- Move Aces from Reserve to Foundations
-moveResAcesFoundations :: Board -> Board
-moveResAcesFoundations (EOBoard f c r)
-    | ac `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ac) c (filter (/=ac) r))
-    | ad `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ad) c (filter (/=ad) r))
-    | ah `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ah) c (filter (/=ah) r))
-    | as `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f as) c (filter (/=as) r))
-    | otherwise = EOBoard f c r
-        where
-            ac = Card Ace Clubs
-            ad = Card Ace Diamonds
-            ah = Card Ace Hearts
-            as = Card Ace Spades
+-- moveResAcesFoundations :: Board -> Board
+-- moveResAcesFoundations (EOBoard f c r)
+--     | ac `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ac) c (removeFromReserve r ac))
+--     | ad `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ad) c (removeFromReserve r ad))
+--     | ah `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ah) c (removeFromReserve r ah))
+--     | as `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f as) c (removeFromReserve r as))
+--     | otherwise = EOBoard f c r
+--         where
+--             ac = Card Ace Clubs
+--             ad = Card Ace Diamonds
+--             ah = Card Ace Hearts
+--             as = Card Ace Spades
 
 -- Move Aces from Column to Foundations
-moveColAcesFoundations :: Board -> Board
-moveColAcesFoundations (EOBoard f c r)
-  | isAce (last (head c)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (head c))) (head (init c):tail c) r)
-  | isAce (last (c!!1)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!1))) (removeFromColumns c (last (c!!1))) r)
-  | isAce (last (c!!2)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!2))) (removeFromColumns c (last (c!!2))) r)
-  | isAce (last (c!!3)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!3))) (removeFromColumns c (last (c!!3))) r)
-  | isAce (last (c!!4)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!4))) (removeFromColumns c (last (c!!4))) r)
-  | isAce (last (c!!5)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!5))) (removeFromColumns c (last (c!!5))) r)
-  | isAce (last (c!!6)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!6))) (removeFromColumns c (last (c!!6))) r)
-  | isAce (last (c!!7)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!7))) (removeFromColumns c (last (c!!7))) r)
-  | otherwise = EOBoard f c r
+-- moveColAcesFoundations :: Board -> Board
+-- moveColAcesFoundations (EOBoard f c r)
+--     | isAce (last (head c)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (head c))) (removeFromColumns c (last (head c))) r)
+--     | isAce (last (c!!1)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!1))) (removeFromColumns c (last (c!!1))) r)
+--     | isAce (last (c!!2)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!2))) (removeFromColumns c (last (c!!2))) r)
+--     | isAce (last (c!!3)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!3))) (removeFromColumns c (last (c!!3))) r)
+--     | isAce (last (c!!4)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!4))) (removeFromColumns c (last (c!!4))) r)
+--     | isAce (last (c!!5)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!5))) (removeFromColumns c (last (c!!5))) r)
+--     | isAce (last (c!!6)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!6))) (removeFromColumns c (last (c!!6))) r)
+--     | isAce (last (c!!7)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!7))) (removeFromColumns c (last (c!!7))) r)
+--     | otherwise = EOBoard f c r
 
 -- Add any card to correct pile in Foundation
 addAnyFound :: [Foundation] -> Card -> [Foundation]
@@ -178,12 +177,10 @@ removeFromColumns col car
     | car == last (col!!7) = head col:col!!1:col!!2:col!!3:col!!4:col!!5:col!!6:init (col!!7):drop 8 col
     | otherwise = col
 
--- moveNonAcesFoundations :: Board -> Board
--- moveNonAcesFoundations (EOBoard f c r)
---     | null l = moveResAcesFoundations.moveColAcesFoundations
---     | c `elem` r = (EOBoard f c r)
---     | c `elem` c 
---         where
---             l = head f
---             c = getSucc (tail l)
---             s = getSuit c
+removeFromReserve :: Reserve -> Card -> Reserve
+removeFromReserve res car
+    | car `elem` res = filter (/=car) res
+    | otherwise = res
+
+getBottomColCards :: [Column] -> [Card]
+getBottomColCards = map last
