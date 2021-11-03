@@ -8,6 +8,18 @@ NOTE: For the columns, the last card in the list represents the bottommost card
 i.e. the ones which can potentially be moved. Any card at the start of the list
 cannot be moved until its successor are moved.
 
++ end of list as "top card"?
++ What is meant by following?
+A constant of type Board that shows the game in progress (that is, the state of the board at
+that particular move) for the screenshot shown in Appendix B.
++ type vs data?
++ How to show face-up/face down cards - Card or Column?
+
+
+TODO:
+* Add remaining deals counter
+* 
+
 Author: Ben Barrow
 Date: 03.11.2021
 -}
@@ -32,12 +44,13 @@ type Reserve = [Card]
 type Column = [Card]
 type Stock = [Card]
 
-data Board = EOBoard [Foundation] [Column] Reserve
+data Board = EOBoard [Foundation] [Column] Reserve |
+             SBoard [Foundation] [Column] Stock
 
 instance Show Board where
-    show (EOBoard f cs r) =
+    show (EOBoard fs cs r) =
         "\nEOBoard\n" ++
-        "Foundations   " ++ show f ++
+        "Foundations   " ++ show fs ++
         "\nColumns\n" ++
         "  " ++ show (head cs) ++ "\n" ++
         "  " ++ show (cs!!1) ++ "\n" ++
@@ -49,9 +62,29 @@ instance Show Board where
         "  " ++ show (cs!!7) ++ "\n" ++
         "Reserve   " ++ show r ++ "\n"
 
+    show (SBoard fs cs r) = 
+        "\nSBoard\n" ++
+        "Foundations   " ++ show fs ++
+        "\nColumns\n" ++
+        "  " ++ show (head cs) ++ "\n" ++
+        "  " ++ show (cs!!1) ++ "\n" ++
+        "  " ++ show (cs!!2) ++ "\n" ++
+        "  " ++ show (cs!!3) ++ "\n" ++
+        "  " ++ show (cs!!4) ++ "\n" ++
+        "  " ++ show (cs!!5) ++ "\n" ++
+        "  " ++ show (cs!!6) ++ "\n" ++
+        "  " ++ show (cs!!7) ++ "\n" ++
+        "  " ++ show (cs!!8) ++ "\n" ++
+        "  " ++ show (cs!!9) ++ "\n" ++
+        "Stock " ++ show (length r `div` 10) ++ " Deals Remaining "
+
 -- Define a 52-card deck
 pack :: Deck
-pack = [Card pip suit | pip <- [Ace .. King], suit <- [Clubs .. Spades]]
+pack = [Card pip suit | pip <- [minBound .. maxBound], suit <- [minBound .. maxBound]]
+
+-- Define a 104-card deck
+sPack :: Deck
+sPack = pack++pack
 
 -- Get successor card
 sCard :: Card -> Card
@@ -91,6 +124,19 @@ startCol d = [take 6 d,
                 take 6 (drop 36 d),
                 take 6 (drop 42 d)]
 
+-- Generate 8 columns of 6 cards
+sStartCol :: Deck -> [Column]
+sStartCol d = [take 6 d,
+                take 6 (drop 6 d),
+                take 6 (drop 12 d),
+                take 6 (drop 18 d),
+                take 5 (drop 24 d),
+                take 5 (drop 29 d),
+                take 5 (drop 34 d),
+                take 5 (drop 49 d),
+                take 5 (drop 44 d),
+                take 5 (drop 49 d)]                
+
 -- Initial board setup
 eODeal :: Int -> Board
 eODeal rand = EOBoard foundations columns reserve
@@ -99,6 +145,31 @@ eODeal rand = EOBoard foundations columns reserve
         foundations  = [[],[],[],[]]
         columns = startCol shuffled
         reserve = [shuffled!!48, shuffled!!49, shuffled!!50, shuffled!!51]
+
+sDeal :: Int -> Board
+sDeal rand = SBoard f c s
+    where
+        shuffled = shuffle rand sPack
+        f = [[],[],[],[],[],[],[],[]]
+        c = sStartCol shuffled
+        s = drop 54 shuffled
+
+
+-- TODO, MAKE FLIP FUNCTION
+-- sDeal :: Int -> Board
+-- sDeal rand = hideCards (SBoard f c s)
+--     where
+--         shuffled = shuffle rand sPack
+--         f = [[],[],[],[],[],[],[],[]]
+--         c = sStartCol shuffled
+--         s = drop 54 shuffled
+
+-- hideCards :: Board -> Board
+-- hideCards (SBoard f c s) = SBoard f (map flipCard (map init c)) s
+
+-- flipCard :: Card -> Card
+-- flipCard card = card
+--     { hidden = True }
 
 -- Checks suit and returns an Int indicating to which Foundation pile it belongs
 checkSuit :: Card -> Int
