@@ -32,11 +32,11 @@ data Pip = Ace | Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | 
             deriving (Eq, Enum, Show, Bounded)
 data Suit = Clubs | Diamonds | Hearts | Spades
             deriving (Eq, Enum, Show, Bounded)
-data Card = Card Pip Suit
+data Card = Card {pip :: Pip, suit :: Suit, faceup :: Bool}
             deriving (Eq)
 
 instance Show Card where
-    show (Card p s) = "(" ++ show p ++ " of " ++ show s ++ ")"
+    show (Card p s u) = "(" ++ show p ++ " of " ++ show s ++ ")" ++ "[" ++ show u ++ "]"
 
 type Deck = [Card]
 type Foundation = [Card]
@@ -80,7 +80,7 @@ instance Show Board where
 
 -- Define a 52-card deck
 pack :: Deck
-pack = [Card pip suit | pip <- [minBound .. maxBound], suit <- [minBound .. maxBound]]
+pack = [Card p s u | p <- [minBound .. maxBound], s <- [minBound .. maxBound], u <- [True ..] ]
 
 -- Define a 104-card deck
 sPack :: Deck
@@ -88,24 +88,24 @@ sPack = pack++pack
 
 -- Get successor card
 sCard :: Card -> Card
-sCard (Card p s)
-    | p == King = Card Ace s
-    | otherwise = Card (succ p) s
+sCard (Card p s _)
+    | p == King = Card Ace s True
+    | otherwise = Card (succ p) s True
 
 -- Get predecessor card
 pCard :: Card -> Card
-pCard (Card p s)
-    | p == Ace = Card King s
-    | otherwise = Card (pred p) s
+pCard (Card p s _)
+    | p == Ace = Card King s True
+    | otherwise = Card (pred p) s True
 
 -- Determine if Ace
 isAce :: Card -> Bool
-isAce (Card p _) | p == Ace = True
+isAce (Card p _ _) | p == Ace = True
                  | otherwise = False
 
 -- Determine if King
 isKing :: Card -> Bool
-isKing (Card p _) | p == King = True
+isKing (Card p _ _) | p == King = True
                   | otherwise = False
 
 -- Shuffle deck of cards
@@ -173,7 +173,7 @@ sDeal rand = SBoard f c s
 
 -- Checks suit and returns an Int indicating to which Foundation pile it belongs
 checkSuit :: Card -> Int
-checkSuit (Card _ s)
+checkSuit (Card _ s _)
     | s == Clubs = 0
     | s == Diamonds = 1
     | s == Hearts = 2
@@ -230,10 +230,10 @@ toFoundations (EOBoard f c r)
         toFoundations (EOBoard (addCardFnd f spadesuc) (removeFromCol c spadesuc) (removeFromReserve r spadesuc))
     | otherwise = EOBoard f c r
         where
-            clubsuc = if null (head f) then Card Ace Clubs else sCard (last (head f))
-            diamondsuc = if null (f!!1) then Card Ace Diamonds else sCard (last (f!!1))
-            heartsuc = if null (f!!2) then Card Ace Hearts else sCard (last (f!!2))
-            spadesuc = if null (f!!3) then Card Ace Spades else sCard (last (f!!3))
+            clubsuc = if null (head f) then Card Ace Clubs True else sCard (last (head f))
+            diamondsuc = if null (f!!1) then Card Ace Diamonds True else sCard (last (f!!1))
+            heartsuc = if null (f!!2) then Card Ace Hearts True else sCard (last (f!!2))
+            spadesuc = if null (f!!3) then Card Ace Spades True else sCard (last (f!!3))
 
 -- Will be used later (Stage 2) to determine if stacks of card can be moved
 getFreeReserveCount :: Reserve -> Int
