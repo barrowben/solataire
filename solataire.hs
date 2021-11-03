@@ -54,7 +54,6 @@ pack = [Card pip suit | pip <- [Ace .. King], suit <- [Clubs .. Spades]]
 -- Get successor card
 sCard :: Card -> Card
 sCard (Card p s)
-    -- | null = Card Ace s
     | p == King = Card Ace s
     | otherwise = Card (succ p) s
 
@@ -73,14 +72,6 @@ isAce (Card p _) | p == Ace = True
 isKing :: Card -> Bool
 isKing (Card p _) | p == King = True
                   | otherwise = False
-
--- Checks suit and returns an Int indicating to which Foundation pile it belongs
-checkSuit :: Card -> Int
-checkSuit (Card _ s)
-    | s == Clubs = 0
-    | s == Diamonds = 1
-    | s == Hearts = 2
-    | otherwise = 3
 
 -- Shuffle deck of cards
 cmp (x1, y1) (x2, y2) = compare y1 y2
@@ -108,65 +99,29 @@ eODeal seed = EOBoard foundations columns reserve
         columns = startColumns shuffled
         reserve = [shuffled!!48, shuffled!!49, shuffled!!50, shuffled!!51]
 
-toFoundations :: Board -> Board
-toFoundations (EOBoard f c r)
-    | clubsuc `elem` r || clubsuc `elem` (getBottomColCards c) =
-        toFoundations (EOBoard (addAnyFound f clubsuc) (removeFromColumns c clubsuc) (removeFromReserve r clubsuc))
-    | diamondsuc `elem` r || diamondsuc `elem` (getBottomColCards c) =
-        toFoundations (EOBoard (addAnyFound f diamondsuc) (removeFromColumns c diamondsuc) (removeFromReserve r diamondsuc))
-    | heartsuc `elem` r || heartsuc `elem` (getBottomColCards c) =
-        toFoundations (EOBoard (addAnyFound f heartsuc) (removeFromColumns c heartsuc) (removeFromReserve r heartsuc))
-    | spadesuc `elem` r || spadesuc `elem` (getBottomColCards c) =
-        toFoundations (EOBoard (addAnyFound f spadesuc) (removeFromColumns c spadesuc) (removeFromReserve r spadesuc))
-    | otherwise = EOBoard f c r         
-        where
-            clubsuc = if null (f!!0) then Card Ace Clubs else sCard (last (f!!0))
-            diamondsuc = if null (f!!1) then Card Ace Diamonds else sCard (last (f!!1))
-            heartsuc = if null (f!!2) then Card Ace Hearts else sCard (last (f!!2))
-            spadesuc = if null (f!!3) then Card Ace Spades else sCard (last (f!!3))
-
--- Will be used later (Stage 2) to determine if stacks of card can be moved
-getFreeReserveCount :: Reserve -> Int
-getFreeReserveCount r = 8 - length r
-
--- Move Aces from Reserve to Foundations
--- moveResAcesFoundations :: Board -> Board
--- moveResAcesFoundations (EOBoard f c r)
---     | ac `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ac) c (removeFromReserve r ac))
---     | ad `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ad) c (removeFromReserve r ad))
---     | ah `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ah) c (removeFromReserve r ah))
---     | as `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f as) c (removeFromReserve r as))
---     | otherwise = EOBoard f c r
---         where
---             ac = Card Ace Clubs
---             ad = Card Ace Diamonds
---             ah = Card Ace Hearts
---             as = Card Ace Spades
-
--- Move Aces from Column to Foundations
--- moveColAcesFoundations :: Board -> Board
--- moveColAcesFoundations (EOBoard f c r)
---     | isAce (last (head c)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (head c))) (removeFromColumns c (last (head c))) r)
---     | isAce (last (c!!1)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!1))) (removeFromColumns c (last (c!!1))) r)
---     | isAce (last (c!!2)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!2))) (removeFromColumns c (last (c!!2))) r)
---     | isAce (last (c!!3)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!3))) (removeFromColumns c (last (c!!3))) r)
---     | isAce (last (c!!4)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!4))) (removeFromColumns c (last (c!!4))) r)
---     | isAce (last (c!!5)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!5))) (removeFromColumns c (last (c!!5))) r)
---     | isAce (last (c!!6)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!6))) (removeFromColumns c (last (c!!6))) r)
---     | isAce (last (c!!7)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!7))) (removeFromColumns c (last (c!!7))) r)
---     | otherwise = EOBoard f c r
+-- Checks suit and returns an Int indicating to which Foundation pile it belongs
+checkSuit :: Card -> Int
+checkSuit (Card _ s)
+    | s == Clubs = 0
+    | s == Diamonds = 1
+    | s == Hearts = 2
+    | otherwise = 3
 
 -- Add any card to correct pile in Foundation
-addAnyFound :: [Foundation] -> Card -> [Foundation]
-addAnyFound f c
+addCardFnd :: [Foundation] -> Card -> [Foundation]
+addCardFnd f c
     | checkSuit c == 0 = [c]:tail f -- Clubs
     | checkSuit c == 1 = head f:[c]:drop 2 f -- Diamonds
     | checkSuit c == 2 = head f:f!!1:[c]:drop 3 f -- Hearts
     | otherwise = head f:f!!1:f!!2:[c]:drop 4 f -- Spades
 
+-- Creates list of all cards on bottom of columns
+getBtmColCards :: [Column] -> [Card]
+getBtmColCards = map last
+
 -- Check bottom card in columns for passed in card and remove if present
-removeFromColumns :: [Column] -> Card -> [Column]
-removeFromColumns col car
+removeFromCol :: [Column] -> Card -> [Column]
+removeFromCol col car
     | car == last (head col) = head (init col):tail col
     | car == last (col!!1) = head col:init (col!!1):drop 2 col
     | car == last (col!!2) = head col:col!!1:init (col!!2):drop 3 col
@@ -182,5 +137,24 @@ removeFromReserve res car
     | car `elem` res = filter (/=car) res
     | otherwise = res
 
-getBottomColCards :: [Column] -> [Card]
-getBottomColCards = map last
+-- Moves all legal cards to Foundations
+toFoundations :: Board -> Board
+toFoundations (EOBoard f c r)
+    | clubsuc `elem` r || clubsuc `elem` getBtmColCards c =
+        toFoundations (EOBoard (addCardFnd f clubsuc) (removeFromCol c clubsuc) (removeFromReserve r clubsuc))
+    | diamondsuc `elem` r || diamondsuc `elem` getBtmColCards c =
+        toFoundations (EOBoard (addCardFnd f diamondsuc) (removeFromCol c diamondsuc) (removeFromReserve r diamondsuc))
+    | heartsuc `elem` r || heartsuc `elem` getBtmColCards c =
+        toFoundations (EOBoard (addCardFnd f heartsuc) (removeFromCol c heartsuc) (removeFromReserve r heartsuc))
+    | spadesuc `elem` r || spadesuc `elem` getBtmColCards c =
+        toFoundations (EOBoard (addCardFnd f spadesuc) (removeFromCol c spadesuc) (removeFromReserve r spadesuc))
+    | otherwise = EOBoard f c r
+        where
+            clubsuc = if null (head f) then Card Ace Clubs else sCard (last (head f))
+            diamondsuc = if null (f!!1) then Card Ace Diamonds else sCard (last (f!!1))
+            heartsuc = if null (f!!2) then Card Ace Hearts else sCard (last (f!!2))
+            spadesuc = if null (f!!3) then Card Ace Spades else sCard (last (f!!3))
+
+-- Will be used later (Stage 2) to determine if stacks of card can be moved
+getFreeReserveCount :: Reserve -> Int
+getFreeReserveCount r = 8 - length r
