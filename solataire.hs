@@ -130,7 +130,7 @@ toFoundations = moveResAcesFoundations.moveColAcesFoundations
 getFreeReserveCount :: Reserve -> Int
 getFreeReserveCount r = 8 - length r
 
--- Move Aces from Reseve to Foundations
+-- Move Aces from Reserve to Foundations
 moveResAcesFoundations :: Board -> Board
 moveResAcesFoundations (EOBoard f c r)
     | ac `elem` r = moveResAcesFoundations (EOBoard (addAnyFound f ac) c (filter (/=ac) r))
@@ -144,32 +144,20 @@ moveResAcesFoundations (EOBoard f c r)
             ah = Card Ace Hearts
             as = Card Ace Spades
 
--- This black magic should probably be refactored
--- for some reason "take X c" can't be consed to the columns
--- moveColAcesFoundations :: Board -> Board
--- moveColAcesFoundations (EOBoard f c r)
---   | isAce (last (head c)) = moveColAcesFoundations (EOBoard (addAcesToFoundation f (last (head c))) (head (init c):tail c) r)
---   | isAce (last (c!!1)) = moveColAcesFoundations (EOBoard (addAcesToFoundation f (last (c!!1))) (head c:init (c!!1):drop 2 c) r)
---   | isAce (last (c!!2)) = moveColAcesFoundations (EOBoard (addAcesToFoundation f (last (c!!2))) (head c:c!!1:init (c!!2):drop 3 c) r)
---   | isAce (last (c!!3)) = moveColAcesFoundations (EOBoard (addAcesToFoundation f (last (c!!3))) (head c:c!!1:c!!2:init (c!!3):drop 4 c) r)
---   | isAce (last (c!!4)) = moveColAcesFoundations (EOBoard (addAcesToFoundation f (last (c!!4))) (head c:c!!1:c!!2:c!!3:init (c!!4):drop 5 c) r)
---   | isAce (last (c!!5)) = moveColAcesFoundations (EOBoard (addAcesToFoundation f (last (c!!5))) (head c:c!!1:c!!2:c!!3:c!!4:init (c!!5):drop 6 c) r)
---   | isAce (last (c!!6)) = moveColAcesFoundations (EOBoard (addAcesToFoundation f (last (c!!6))) (head c:c!!1:c!!2:c!!3:c!!4:c!!5:init (c!!6):drop 7 c) r)
---   | isAce (last (c!!7)) = moveColAcesFoundations (EOBoard (addAcesToFoundation f (last (c!!7))) (head c:c!!1:c!!2:c!!3:c!!4:c!!5:c!!6:init (c!!7):drop 8 c) r)
---   | otherwise = EOBoard f c r
-
+-- Move Aces from Column to Foundations
 moveColAcesFoundations :: Board -> Board
 moveColAcesFoundations (EOBoard f c r)
   | isAce (last (head c)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (head c))) (head (init c):tail c) r)
-  | isAce (last (c!!1)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!1))) (head c:init (c!!1):drop 2 c) r)
-  | isAce (last (c!!2)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!2))) (head c:c!!1:init (c!!2):drop 3 c) r)
-  | isAce (last (c!!3)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!3))) (head c:c!!1:c!!2:init (c!!3):drop 4 c) r)
-  | isAce (last (c!!4)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!4))) (head c:c!!1:c!!2:c!!3:init (c!!4):drop 5 c) r)
-  | isAce (last (c!!5)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!5))) (head c:c!!1:c!!2:c!!3:c!!4:init (c!!5):drop 6 c) r)
-  | isAce (last (c!!6)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!6))) (head c:c!!1:c!!2:c!!3:c!!4:c!!5:init (c!!6):drop 7 c) r)
-  | isAce (last (c!!7)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!7))) (head c:c!!1:c!!2:c!!3:c!!4:c!!5:c!!6:init (c!!7):drop 8 c) r)
+  | isAce (last (c!!1)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!1))) (removeFromColumns c (last (c!!1))) r)
+  | isAce (last (c!!2)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!2))) (removeFromColumns c (last (c!!2))) r)
+  | isAce (last (c!!3)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!3))) (removeFromColumns c (last (c!!3))) r)
+  | isAce (last (c!!4)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!4))) (removeFromColumns c (last (c!!4))) r)
+  | isAce (last (c!!5)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!5))) (removeFromColumns c (last (c!!5))) r)
+  | isAce (last (c!!6)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!6))) (removeFromColumns c (last (c!!6))) r)
+  | isAce (last (c!!7)) = moveColAcesFoundations (EOBoard (addAnyFound f (last (c!!7))) (removeFromColumns c (last (c!!7))) r)
   | otherwise = EOBoard f c r
 
+-- Add any card to correct pile in Foundation
 addAnyFound :: [Foundation] -> Card -> [Foundation]
 addAnyFound f c
     | checkSuit c == 0 = [c]:tail f -- Clubs
@@ -189,16 +177,6 @@ removeFromColumns col car
     | car == last (col!!6) = head col:col!!1:col!!2:col!!3:col!!4:col!!5:init (col!!6):drop 7 col
     | car == last (col!!7) = head col:col!!1:col!!2:col!!3:col!!4:col!!5:col!!6:init (col!!7):drop 8 col
     | otherwise = col
-
-
--- TODO: DELETE
--- addAcesToFoundation :: [Foundation] -> Card -> [Foundation]
--- addAcesToFoundation f (Card Ace Clubs) = [Card Ace Clubs]:tail f
--- addAcesToFoundation f (Card Ace Diamonds) = head f:[Card Ace Diamonds]:drop 2 f
--- addAcesToFoundation f (Card Ace Hearts) = head f:f!!1:[Card Ace Hearts]:drop 3 f
--- addAcesToFoundation f (Card Ace Spades) = head f:f!!1:f!!2:[Card Ace Spades]:drop 4 f
--- addAcesToFoundation f (Card _ _) = f
-
 
 -- moveNonAcesFoundations :: Board -> Board
 -- moveNonAcesFoundations (EOBoard f c r)
