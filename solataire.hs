@@ -62,7 +62,7 @@ instance Show Board where
         "  " ++ show (cs!!7) ++ "\n" ++
         "Reserve   " ++ show r ++ "\n"
 
-    show (SBoard fs cs r) = 
+    show (SBoard fs cs r) =
         "\nSBoard\n" ++
         "Foundations   " ++ show fs ++
         "\nColumns\n" ++
@@ -135,9 +135,9 @@ sStartCol d = [take 6 d,
                 take 5 (drop 34 d),
                 take 5 (drop 49 d),
                 take 5 (drop 44 d),
-                take 5 (drop 49 d)]                
+                take 5 (drop 49 d)]
 
--- Initial board setup
+-- Initial eight-off board setup
 eODeal :: Int -> Board
 eODeal rand = EOBoard foundations columns reserve
     where
@@ -146,30 +146,26 @@ eODeal rand = EOBoard foundations columns reserve
         columns = startCol shuffled
         reserve = [shuffled!!48, shuffled!!49, shuffled!!50, shuffled!!51]
 
+-- Initial spider setup
 sDeal :: Int -> Board
-sDeal rand = SBoard f c s
+sDeal rand = hideAllCol (SBoard f c s)
     where
         shuffled = shuffle rand sPack
         f = [[],[],[],[],[],[],[],[]]
         c = sStartCol shuffled
         s = drop 54 shuffled
 
+-- Functions to hide cards
+hideAllCol :: Board -> Board
+hideAllCol (SBoard f c s) = SBoard f (map hideCards c) s
 
--- TODO, MAKE FLIP FUNCTION
--- sDeal :: Int -> Board
--- sDeal rand = hideCards (SBoard f c s)
---     where
---         shuffled = shuffle rand sPack
---         f = [[],[],[],[],[],[],[],[]]
---         c = sStartCol shuffled
---         s = drop 54 shuffled
+hideCards :: Column -> Column
+hideCards col = map flipCard facedown ++ [last col]
+    where facedown = init col
 
--- hideCards :: Board -> Board
--- hideCards (SBoard f c s) = SBoard f (map flipCard (map init c)) s
-
--- flipCard :: Card -> Card
--- flipCard card = card
---     { hidden = True }
+flipCard :: Card -> Card
+flipCard card = card
+    { faceup = False }
 
 -- Checks suit and returns an Int indicating to which Foundation pile it belongs
 checkSuit :: Card -> Int
@@ -192,23 +188,8 @@ addCardFnd f c
 getBtmColCards :: [Column] -> [Card]
 getBtmColCards = map last
 
--- Check bottom card in columns for passed in card and remove if present
--- [DONE] Refactor using getBtmCards
--- TODO: REMOVE WHEN VERIFIED NEW FUNCTION IS WORKING CORRECTLY
--- removeFromCol :: [Column] -> Card -> [Column]
--- removeFromCol col card
---     | card == last (head col) = head (init col):tail col
---     | card == last (col!!1) = head col:init (col!!1):drop 2 col
---     | card == last (col!!2) = head col:col!!1:init (col!!2):drop 3 col
---     | card == last (col!!3) = head col:col!!1:col!!2:init (col!!3):drop 4 col
---     | card == last (col!!4) = head col:col!!1:col!!2:col!!3:init (col!!4):drop 5 col
---     | card == last (col!!5) = head col:col!!1:col!!2:col!!3:col!!4:init (col!!5):drop 6 col
---     | card == last (col!!6) = head col:col!!1:col!!2:col!!3:col!!4:col!!5:init (col!!6):drop 7 col
---     | card == last (col!!7) = head col:col!!1:col!!2:col!!3:col!!4:col!!5:col!!6:init (col!!7):drop 8 col -- This bit at the end is black magic, ask someone to explain why it behaves this this
---     | otherwise = col
-
 removeFromCol :: [Column] -> Card -> [Column]
-removeFromCol col card 
+removeFromCol col card
     | card `elem` getBtmColCards col = map (delete card) col
     | otherwise = col
 
