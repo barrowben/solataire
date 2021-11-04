@@ -15,6 +15,7 @@ that particular move) for the screenshot shown in Appendix B.
 + type vs data?
 
 Author: Ben Barrow
+Credit: Emma Norling for Shuffle function, taken and slightly modified from lecture slides
 Date: 04.11.2021
 -}
 
@@ -29,8 +30,9 @@ data Suit = Clubs | Diamonds | Hearts | Spades
 data Card = Card {pip :: Pip, suit :: Suit, faceup :: Bool}
             deriving (Eq)
 
+-- Output the card. If the card is facedown, <unknown> will be displayed
 instance Show Card where
-    show (Card p s u) = if u then "(" ++ show p ++ " of " ++ show s ++ ")" else "<unknown>"
+    show (Card p s u) = if u then "(" ++ show p ++ " of " ++ show s ++ ")" else "(<unknown>)"
 
 type Deck = [Card]
 type Foundation = [Card]
@@ -169,7 +171,7 @@ checkSuit (Card _ s _)
     | otherwise = 3
 
 -- Add any card to correct pile in Foundation
--- TODO: BIT FUNKY... REFACTOR?
+-- TODO: BIT FUNKY ... THERE IS PROBABLY A BETTER WAY OF DOING THIS!
 addCardFnd :: [Foundation] -> Card -> [Foundation]
 addCardFnd f c
     | checkSuit c == 0 = [c]:tail f -- Clubs
