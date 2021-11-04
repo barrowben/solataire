@@ -175,13 +175,12 @@ getBtmColCards :: [Column] -> [Card]
 getBtmColCards = map last
 
 -- Add any card to correct pile in Foundation
--- TODO: BIT FUNKY ... THERE IS PROBABLY A BETTER WAY OF DOING THIS!
 addCardFnd :: [Foundation] -> Card -> [Foundation]
 addCardFnd f c
     | checkSuit c == 0 = [c]:tail f -- Clubs
     | checkSuit c == 1 = head f:[c]:drop 2 f -- Diamonds
-    | checkSuit c == 2 = head f:f!!1:[c]:drop 3 f -- Hearts
-    | otherwise = head f:f!!1:f!!2:[c]:drop 4 f -- Spades
+    | checkSuit c == 2 = take 2 f++[c]:drop 3 f -- Hearts
+    | otherwise = take 3 f++[c]:drop 4 f -- Spades
 
 -- Remove card from column
 removeFromCol :: [Column] -> Card -> [Column]
