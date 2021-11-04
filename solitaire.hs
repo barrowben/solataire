@@ -140,7 +140,7 @@ eODeal rand = EOBoard foundations columns reserve
         shuffled = shuffle rand pack
         foundations  = [[],[],[],[]]
         columns = startCol shuffled
-        reserve = [shuffled!!48, shuffled!!49, shuffled!!50, shuffled!!51]
+        reserve = drop 48 shuffled
 
 -- Initial spider board setup
 sDeal :: Int -> Board
@@ -170,6 +170,10 @@ checkSuit (Card _ s _)
     | s == Hearts = 2
     | otherwise = 3
 
+-- Creates list of all cards on bottom of columns
+getBtmColCards :: [Column] -> [Card]
+getBtmColCards = map last
+
 -- Add any card to correct pile in Foundation
 -- TODO: BIT FUNKY ... THERE IS PROBABLY A BETTER WAY OF DOING THIS!
 addCardFnd :: [Foundation] -> Card -> [Foundation]
@@ -179,15 +183,13 @@ addCardFnd f c
     | checkSuit c == 2 = head f:f!!1:[c]:drop 3 f -- Hearts
     | otherwise = head f:f!!1:f!!2:[c]:drop 4 f -- Spades
 
--- Creates list of all cards on bottom of columns
-getBtmColCards :: [Column] -> [Card]
-getBtmColCards = map last
-
+-- Remove card from column
 removeFromCol :: [Column] -> Card -> [Column]
 removeFromCol col card
     | card `elem` getBtmColCards col = map (delete card) col
     | otherwise = col
 
+-- Remove card from reserve
 removeFromReserve :: Reserve -> Card -> Reserve
 removeFromReserve res card
     | card `elem` res = filter (/=card) res
