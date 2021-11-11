@@ -8,11 +8,11 @@ NOTE: For the columns, the last card in the list represents the bottom-most card
 i.e. the ones which can potentially be moved. Any card at the start of the list
 cannot be moved until its successor are moved.
 
-+ end of list as "top card"?
-+ What is meant by following?
++ end of list as "top card"? => Not a problem but probably best to refactor so that the whole list is not travesrsed to access card
++ What is meant by following?   
 A constant of type Board that shows the game in progress (that is, the state of the board at
-that particular move) for the screenshot shown in Appendix B.
-+ type vs data?
+that particular move) for the screenshot shown in Appendix B. => 
++ type vs data? => type synonmn is fine
 
 Author: Ben Barrow
 Credit: Emma Norling for Shuffle function, taken and slightly modified from lecture slides
