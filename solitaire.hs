@@ -156,8 +156,8 @@ hideAll :: Board -> Board
 hideAll (SBoard f c s) = SBoard f (map hideCards c) s
 
 hideCards :: Column -> Column
-hideCards col = map flipCard facedown ++ [last col]
-    where facedown = init col
+hideCards col = head col : map flipCard facedown
+    where facedown = tail col
 
 flipCard :: Card -> Card
 flipCard card = card { faceup = False }
@@ -171,8 +171,8 @@ checkSuit (Card _ s _)
     | otherwise = 3
 
 -- Creates list of all cards on bottom of columns
-getBtmColCards :: [Column] -> [Card]
-getBtmColCards = map last
+getTopColCards :: [Column] -> [Card]
+getTopColCards = map head
 
 -- Add any card to correct pile in Foundation
 addCardFnd :: [Foundation] -> Card -> [Foundation]
@@ -185,7 +185,7 @@ addCardFnd f c
 -- Remove card from column
 removeFromCol :: [Column] -> Card -> [Column]
 removeFromCol col card
-    | card `elem` getBtmColCards col = map (delete card) col
+    | card `elem` getTopColCards col = map (delete card) col
     | otherwise = col
 
 -- Remove card from reserve
@@ -197,14 +197,14 @@ removeFromReserve res card
 -- Moves all legal cards to Foundations
 toFoundations :: Board -> Board
 toFoundations (EOBoard f c r)
-    | clubsuc `elem` r || clubsuc `elem` getBtmColCards c =
-        toFoundations (EOBoard (addCardFnd f clubsuc) (removeFromCol c clubsuc) (removeFromReserve r clubsuc))
-    | diamondsuc `elem` r || diamondsuc `elem` getBtmColCards c =
-        toFoundations (EOBoard (addCardFnd f diamondsuc) (removeFromCol c diamondsuc) (removeFromReserve r diamondsuc))
-    | heartsuc `elem` r || heartsuc `elem` getBtmColCards c =
-        toFoundations (EOBoard (addCardFnd f heartsuc) (removeFromCol c heartsuc) (removeFromReserve r heartsuc))
-    | spadesuc `elem` r || spadesuc `elem` getBtmColCards c =
-        toFoundations (EOBoard (addCardFnd f spadesuc) (removeFromCol c spadesuc) (removeFromReserve r spadesuc))
+    | clubsuc `elem` r = toFoundations (EOBoard (addCardFnd f clubsuc) c (removeFromReserve r clubsuc))
+    | diamondsuc `elem` r  = toFoundations (EOBoard (addCardFnd f diamondsuc) c (removeFromReserve r diamondsuc))
+    | heartsuc `elem` r = toFoundations (EOBoard (addCardFnd f heartsuc) c (removeFromReserve r heartsuc))
+    | spadesuc `elem` r = toFoundations (EOBoard (addCardFnd f spadesuc) c (removeFromReserve r spadesuc))
+    | clubsuc `elem` getTopColCards c = toFoundations (EOBoard (addCardFnd f clubsuc) (removeFromCol c clubsuc) r)
+    | diamondsuc `elem` getTopColCards c = toFoundations (EOBoard (addCardFnd f diamondsuc) (removeFromCol c diamondsuc) r)
+    | heartsuc `elem` getTopColCards c = toFoundations (EOBoard (addCardFnd f heartsuc) (removeFromCol c heartsuc) r)
+    | spadesuc `elem` getTopColCards c = toFoundations (EOBoard (addCardFnd f spadesuc) (removeFromCol c spadesuc) r)
     | otherwise = EOBoard f c r
         where
             clubsuc = if null (head f) then Card Ace Clubs True else sCard (last (head f))
