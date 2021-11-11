@@ -8,11 +8,13 @@ NOTE: For the columns, the last card in the list represents the bottom-most card
 i.e. the ones which can potentially be moved. Any card at the start of the list
 cannot be moved until its successor are moved.
 
-+ end of list as "top card"? => Not a problem but probably best to refactor so that the whole list is not travesrsed to access card
++ [DONE]end of list as "top card"? => Not a problem but probably best to refactor so that the whole list is not travesrsed to access card
 + What is meant by following?   
+
 A constant of type Board that shows the game in progress (that is, the state of the board at
-that particular move) for the screenshot shown in Appendix B. => 
-+ type vs data? => type synonmn is fine
+that particular move) for the screenshot shown in Appendix B. => Hard code it :(
+
+[DONE]+ type vs data? => type synonmn is fine
 
 Author: Ben Barrow
 Credit: Emma Norling for Shuffle function, taken and slightly modified from lecture slides
@@ -73,6 +75,23 @@ instance Show Board where
         "  " ++ show (cs!!8) ++ "\n" ++
         "  " ++ show (cs!!9) ++ "\n" ++
         "Stock " ++ show (length r `div` 10) ++ " Deals Remaining "
+
+-- The hardcoded Board from Appendix A
+screenshotBoard :: Board
+screenshotBoard = EOBoard fs cs rs
+    where
+        fs  = [[],[],[],[]]
+        cs = [[Card Ace Clubs t, Card Seven Diamonds t, Card Ace Hearts t, Card Queen Hearts t, Card King Clubs t, Card Four Spades t],
+             [Card Five Diamonds t, Card Queen Spades t, Card Three Diamonds t, Card Five Spades t, Card Six Spades t, Card Seven Hearts t],
+             [Card King Hearts t, Card Ten Diamonds t, Card Seven Spades t, Card Queen Diamonds t, Card Five Hearts t, Card Eight Diamonds t],
+             [Card Jack Spades t, Card Six Hearts t, Card Seven Clubs t, Card Eight Spades t, Card Ten Clubs t, Card Queen Clubs t],
+             [Card Ace Spades t, Card Eight Clubs t, Card Ace Diamonds t, Card King Diamonds t, Card Jack Hearts t, Card Four Clubs t],
+             [Card Two Diamonds t, Card Three Hearts t, Card Three Clubs t, Card Ten Hearts t, Card Six Diamonds t, Card Jack Clubs t],
+             [Card Nine Spades t, Card Four Diamonds t, Card Nine Clubs t, Card Nine Hearts t, Card Three Spades t, Card Ten Spades t],
+             [Card Two Clubs t, Card Two Spades t, Card Four Hearts t, Card Nine Diamonds t, Card King Spades t, Card Eight Hearts t]]
+        rs = [Card Two Hearts True, Card Six Clubs True, Card Five Clubs True, Card Jack Diamonds True]
+        t = True
+
 
 -- Define a 52-card deck, cards face-up by default
 pack :: Deck
