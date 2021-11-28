@@ -9,12 +9,9 @@ i.e. the ones which can potentially be moved. Any card at the start of the list
 cannot be moved until its successor are moved.
 
 + [DONE]end of list as "top card"? => Not a problem but probably best to refactor so that the whole list is not travesrsed to access card
-+ What is meant by following?   
-
-A constant of type Board that shows the game in progress (that is, the state of the board at
-that particular move) for the screenshot shown in Appendix B. => Hard code it :(
-
-[DONE]+ type vs data? => type synonmn is fine
++ [DONE]What is meant by "constant of board in appendix" => Hardcode it :(((
++ [DONE] type vs data? => type synonmn is fine
++ [TODO] reduce [Foundations] to Foundations i.e. single list and do not store any other card but top card
 
 Author: Ben Barrow
 Credit: Emma Norling for Shuffle function, taken and slightly modified from lecture slides
@@ -194,6 +191,7 @@ getTopColCards :: [Column] -> [Card]
 getTopColCards = map head
 
 -- Add any card to correct pile in Foundation
+-- TODO: Refactor this
 addCardFnd :: [Foundation] -> Card -> [Foundation]
 addCardFnd f c
     | checkSuit c == 0 = [c]:tail f -- Clubs
