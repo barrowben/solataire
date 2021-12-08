@@ -255,11 +255,11 @@ columnsToReserve (EOBoard found col res) (c:cs)
     | getFreeReserveCount res > 0 = EOBoard found (removeFromCol col c) (addCardRes res c) : columnsToReserve (EOBoard found col res) cs
     | otherwise = columnsToReserve (EOBoard found col res) cs
 
-moveResToCol :: Board -> [Board]
-moveResToCol (EOBoard found col res) = [EOBoard found c r | c <- f, r <- g]
-    where f = map (`moveToCol` col) res
-          g = map (\y -> removeFromRes' y col res) res
-          topcards = getTopColCards col
+-- moveResToCol :: Board -> [Board]
+-- moveResToCol (EOBoard found col res) = [EOBoard found c r | c <- f, r <- g]
+--     where f = map (`moveToCol` col) res
+--           g = map (\y -> removeFromRes' y col res) res
+--           topcards = getTopColCards col
 
 getResColBoard :: Board -> [Board]
 getResColBoard board = moveResToCol' board columnsunpack reserveunpack
@@ -310,7 +310,7 @@ filterMoveableCard :: [Column] -> [Column]
 filterMoveableCard col = filter (\x -> last x `elem` (neededCards col)) (map getAllMoveableCardsCol (filter (not.null) col))
 
 findMoves :: Board -> [Board]
-findMoves board@(EOBoard f c r) = map toFoundations (list ++ getResColBoard board  ++ getColToResBoards board)
+findMoves board@(EOBoard f c r) = nub (map toFoundations (list ++ getResColBoard board  ++ getColToResBoards board))
                                                 where list = map (\x -> createColBoard x board) (filterMoveableCard c)
 
 chooseMove :: Board -> Maybe Board
@@ -388,7 +388,7 @@ main =
     for ALL your code if you do, even if *some* of your code is correct.
     -}
 
-    {- start comment marker - move this if appropriate
+    -- start comment marker - move this if appropriate
 
     let boards = findMoves board      -- show that findMoves is working
     putStrLn "***The possible next moves after that:"
@@ -417,7 +417,7 @@ main =
     putStrLn $ "Score: " ++ score
     putStrLn $ "and if I'd used playSolitaire, I would get score: " ++ show (playSolitaire secondBoardDefined)
 
-    -}
+
 
 {- displayGame takes a Board and move number (should initially be 0) and
     displays the game step-by-step (board-by-board). The result *should* be
