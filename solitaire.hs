@@ -20,6 +20,10 @@ Date: 04.11.2021
 
 import System.Random
 import Data.List
+import Data.Ord
+import Data.Maybe
+import Debug.Trace
+import Data.String (String)
 
 -- Define data structures
 data Pip = Ace | Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Queen | King
@@ -40,7 +44,7 @@ type Column = [Card]
 type Stock = [Card]
 
 data Board = EOBoard [Foundation] [Column] Reserve |
-             SBoard [Foundation] [Column] Stock
+             SBoard [Foundation] [Column] Stock deriving (Eq)
 
 instance Show Board where
     show (EOBoard fs cs r) =
@@ -89,7 +93,6 @@ screenshotBoard = EOBoard fs cs rs
         rs = [Card Two Hearts True, Card Six Clubs True, Card Five Clubs True, Card Jack Diamonds True]
         t = True
 
-
 -- Define a 52-card deck, cards face-up by default
 pack :: Deck
 pack = [Card p s u | p <- [minBound .. maxBound], s <- [minBound .. maxBound], u <- [True ..]]
@@ -104,7 +107,7 @@ sCard (Card p s _)
     | p == King = Card Ace s True
     | otherwise = Card (succ p) s True
 
--- Get predecessor card [NOT USED]
+-- Get predecessor card
 pCard :: Card -> Card
 pCard (Card p s _)
     | p == Ace = Card King s True
@@ -176,7 +179,7 @@ hideCards col = head col : map flipCard facedown
     where facedown = tail col
 
 flipCard :: Card -> Card
-flipCard card = card { faceup = False }
+flipCard card = card {faceup = False}
 
 -- Checks suit and returns an Int indicating to which Foundation pile it belongs
 checkSuit :: Card -> Int
@@ -186,12 +189,11 @@ checkSuit (Card _ s _)
     | s == Hearts = 2
     | otherwise = 3
 
--- Creates list of all cards on bottom of columns
+-- Creates list of all cards on top of columns
 getTopColCards :: [Column] -> [Card]
 getTopColCards = map head
 
 -- Add any card to correct pile in Foundation
--- TODO: Refactor this
 addCardFnd :: [Foundation] -> Card -> [Foundation]
 addCardFnd f c
     | checkSuit c == 0 = [c]:tail f -- Clubs
@@ -205,13 +207,22 @@ removeFromCol col card
     | card `elem` getTopColCards col = map (delete card) col
     | otherwise = col
 
+-- Add cards to columns
+addCardCol :: Column -> Card -> Column
+addCardCol col card
+    | sCard (head col) == card = card:col
+    | otherwise = col
+
 -- Remove card from reserve
 removeFromReserve :: Reserve -> Card -> Reserve
 removeFromReserve res card
     | card `elem` res = filter (/=card) res
     | otherwise = res
 
--- Moves all legal cards to Foundations
+addCardRes :: Reserve -> Card -> Reserve
+addCardRes r c = r++[c]
+
+-- Moves all legal cards to Foundations for EO Solitaire
 toFoundations :: Board -> Board
 toFoundations (EOBoard f c r)
     | clubsuc `elem` r = toFoundations (EOBoard (addCardFnd f clubsuc) c (removeFromReserve r clubsuc))
@@ -229,6 +240,204 @@ toFoundations (EOBoard f c r)
             heartsuc = if null (f!!2) then Card Ace Hearts True else sCard (last (f!!2))
             spadesuc = if null (f!!3) then Card Ace Spades True else sCard (last (f!!3))
 
--- Will be used later (Stage 2) to determine if stacks of card can be moved
+-- Return number of free spaces in Reserve
 getFreeReserveCount :: Reserve -> Int
 getFreeReserveCount r = 8 - length r
+
+getColToResBoards :: Board -> [Board]
+getColToResBoards (EOBoard f c r) = if getFreeReserveCount r > 0 then columnsToReserve (EOBoard f c r) topCards else []
+    where topCards = getTopColCards c
+
+-- Return all possible Boards moving top column card to reserve
+columnsToReserve :: Board -> [Card] -> [Board]
+columnsToReserve (EOBoard found col res) [] = []
+columnsToReserve (EOBoard found col res) (c:cs)
+    | getFreeReserveCount res > 0 = EOBoard found (removeFromCol col c) (addCardRes res c) : columnsToReserve (EOBoard found col res) cs
+    | otherwise = columnsToReserve (EOBoard found col res) cs
+
+moveResToCol :: Board -> [Board]
+moveResToCol (EOBoard found col res) = [EOBoard found c r | c <- f, r <- g]
+    where f = map (`moveToCol` col) res
+          g = map (\y -> removeFromRes' y col res) res
+          topcards = getTopColCards col
+
+getResColBoard :: Board -> [Board]
+getResColBoard board = moveResToCol' board columnsunpack reserveunpack
+    where zipped = zipResCol board
+          columnsunpack = map snd zipped
+          reserveunpack = map fst zipped
+
+moveResToCol' :: Board -> [[Column]] -> [Reserve] -> [Board]
+moveResToCol' (EOBoard found col res) [] (r:rs) = []
+moveResToCol' (EOBoard found col res) (c:cs) [] = []
+moveResToCol' (EOBoard found col res) [] [] = []
+moveResToCol' (EOBoard found col res) (c:cs) (r:rs) = EOBoard found c r :  moveResToCol' (EOBoard found col res) cs rs
+
+zipResCol :: Board -> [(Reserve, [Column])]
+zipResCol (EOBoard found col res) = zip (map (\y -> removeFromRes' y col res) res) (map (`moveToCol` col) res)
+
+moveToCol :: Card -> [Column] -> [Column]
+moveToCol card [] = []
+moveToCol card cols = map (\x -> (if (pCard (head x) == card) then (card : x) else x)) cols
+
+removeFromRes' :: Card -> [Column] -> Reserve -> Reserve
+removeFromRes' card col res = if sCard card `elem` topcard then filter (/= card) res else res
+    where topcard = getTopColCards col
+
+getAllMoveableCardsCol :: Column -> [Card]
+getAllMoveableCardsCol [] = []
+getAllMoveableCardsCol [f] = [f]
+getAllMoveableCardsCol (f:s:cs)
+    | isKing f = [f]
+    | sCard f == s = f : getAllMoveableCardsCol (s:cs)
+    | otherwise = [f]
+
+removeFromCol' :: [Column] -> [Card] -> [Column]
+removeFromCol' col cards = map (\\ cards) col
+
+addCardAnyCol :: [Column] -> [Card] -> [Column]
+addCardAnyCol col cards = map (\x -> if head x == sCard (last cards) then cards++x else x) (map (\\cards) (filter (not.null) col))
+
+createColBoard :: [Card] -> Board -> Board
+createColBoard cards (EOBoard f c r) = EOBoard f c2 r
+    where c2 = addCardAnyCol c cards
+
+neededCards :: [Column] -> [Card]
+neededCards [] = []
+neededCards col = map (pCard.head) (filter (not.null) col)
+
+filterMoveableCard :: [Column] -> [Column]
+filterMoveableCard col = filter (\x -> last x `elem` (neededCards col)) (map getAllMoveableCardsCol (filter (not.null) col))
+
+findMoves :: Board -> [Board]
+findMoves board@(EOBoard f c r) = map toFoundations (list ++ getResColBoard board  ++ getColToResBoards board)
+                                                where list = map (\x -> createColBoard x board) (filterMoveableCard c)
+
+chooseMove :: Board -> Maybe Board
+chooseMove board@(EOBoard f c r)
+    | null (findMoves board) = Nothing
+    | board == head (findMoves board) = Nothing
+    | otherwise = Just (head (findMoves board))
+
+haveWon :: Board -> Bool
+haveWon (EOBoard f c r) = sum (map length f) == 52
+
+getScore :: Board -> Int
+getScore (EOBoard f c r) = sum (map length f)
+
+playSolitaire :: Board -> Int
+playSolitaire  board@(EOBoard f c r) = getScore(recurseChooseMove board)
+
+recurseChooseMove :: Board -> Board
+recurseChooseMove board@(EOBoard f c r)
+    | isJust (chooseMove board) = recurseChooseMove ((fromJust.chooseMove) board)
+    | otherwise = board
+
+-- i = seed, j = number games
+analyseEO :: Int -> Int -> (Int, Int)
+analyseEO i j = (wonCount, average)
+    where num = take j (randoms (mkStdGen i) :: [Int])
+          score = sum (map (playSolitaire.eODeal) num)
+          wonCount = length (filter (==52) (map (playSolitaire.eODeal) num))
+          average = score `div` j
+
+{- Paste the contents of this file, including this comment, into your source file, below all
+     of your code. You can change the indentation to align with your own, but other than this,
+     ONLY make changes as instructed in the comments.
+   -}
+  -- Constants that YOU must set:
+studentName = "Benedict Barrow"
+studentNumber = "200176657"
+studentUsername = "aca20bab"
+
+initialBoardDefined = screenshotBoard {- replace XXX with the name of the constant that you defined
+                            in step 3 of part 1 -}
+secondBoardDefined = screenshotBoard {- replace YYY with the constant defined in step 5 of part 1,
+                            or if you have chosen to demonstrate play in a different game
+                            of solitaire for part 2, a suitable contstant that will show
+                            your play to good effect for that game -}
+
+{- Beyond this point, the ONLY change you should make is to change the comments so that the
+    work you have completed is tested. DO NOT change anything other than comments (and indentation
+    if needed). The comments in the template file are set up so that only the constant eight-off
+    board from part 1 and the toFoundations function from part 1 are tested. You will probably
+    want more than this tested.
+
+    CHECK with Emma or one of the demonstrators if you are unsure how to change this.
+
+    If you mess this up, your code will not compile, which will lead to being awarded 0 marks
+    for functionality and style.
+-}
+
+main :: IO()
+main =
+    do
+    putStrLn $ "Output for " ++ studentName ++ " (" ++ studentNumber ++ ", " ++ studentUsername ++ ")"
+
+    putStrLn "***The eight-off initial board constant from part 1:"
+    print initialBoardDefined
+
+    let board = toFoundations initialBoardDefined
+    putStrLn "***The result of calling toFoundations on that board:"
+    print board
+
+    {- Move the start comment marker below to the appropriate position.
+    If you have completed ALL the tasks for the assignment, you can
+    remove the comments from the main function entirely.
+    DO NOT try to submit/run non-functional code - you will receive 0 marks
+    for ALL your code if you do, even if *some* of your code is correct.
+    -}
+
+    {- start comment marker - move this if appropriate
+
+    let boards = findMoves board      -- show that findMoves is working
+    putStrLn "***The possible next moves after that:"
+    print boards
+
+    let chosen = chooseMove board     -- show that chooseMove is working
+    putStrLn "***The chosen move from that set:"
+    print chosen
+
+    putStrLn "***Now showing a full game"     -- display a full game
+    score <- displayGame initialBoardDefined 0
+    putStrLn $ "Score: " ++ score
+    putStrLn $ "and if I'd used playSolitaire, I would get score: " ++ show (playSolitaire initialBoardDefined)
+
+
+    putStrLn "\n\n\n************\nNow looking at the alternative game:"
+
+    putStrLn "***The spider initial board constant from part 1 (or equivalent if playing a different game of solitaire):"
+    print secondBoardDefined          -- show the suitable constant. For spider solitaire this
+                                    -- is not an initial game, but a point from which the game
+                                    -- can be won
+
+    putStrLn "***Now showing a full game for alternative solitaire"
+    score <- displayGame secondBoardDefined 0 -- see what happens when we play that game (assumes chooseMove
+                                            -- works correctly)
+    putStrLn $ "Score: " ++ score
+    putStrLn $ "and if I'd used playSolitaire, I would get score: " ++ show (playSolitaire secondBoardDefined)
+
+    -}
+
+{- displayGame takes a Board and move number (should initially be 0) and
+    displays the game step-by-step (board-by-board). The result *should* be
+    the same as performing playSolitaire on the initial board, if it has been
+    implemented correctly.
+    DO NOT CHANGE THIS CODE other than aligning indentation with your own.
+-}
+displayGame :: Board -> Int ->IO String
+displayGame board n =
+    if haveWon board
+        then return "A WIN"
+        else
+        do
+            putStr ("Move " ++ show n ++ ": " ++ show board)
+            let maybeBoard = chooseMove board
+            if isJust maybeBoard then
+                do
+                    let (Just newBoard) = maybeBoard
+                    displayGame newBoard (n+1)
+                else
+                do
+                    let score = show (playSolitaire board)
+                    return score
