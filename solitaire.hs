@@ -4,15 +4,6 @@ solataire.hs
 8-off solataire game
 https://en.wikipedia.org/wiki/Eight_Off
 
-NOTE: For the columns, the last card in the list represents the bottom-most card
-i.e. the ones which can potentially be moved. Any card at the start of the list
-cannot be moved until its successor are moved.
-
-+ [DONE]end of list as "top card"? => Not a problem but probably best to refactor so that the whole list is not travesrsed to access card
-+ [DONE]What is meant by "constant of board in appendix" => Hardcode it :(((
-+ [DONE] type vs data? => type synonmn is fine
-+ [TODO] reduce [Foundations] to Foundations i.e. single list and do not store any other card but top card
-
 Author: Ben Barrow
 Credit: Emma Norling for Shuffle function, taken and slightly modified from lecture slides
 Date: 04.11.2021
@@ -23,11 +14,10 @@ import Data.List
 import Data.Ord
 import Data.Maybe
 import Debug.Trace
-import Data.String (String)
 
 -- Define data structures
 data Pip = Ace | Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Queen | King
-            deriving (Eq, Enum, Show, Bounded)
+            deriving (Eq, Enum, Show, Bounded, Ord)
 data Suit = Clubs | Diamonds | Hearts | Spades
             deriving (Eq, Enum, Show, Bounded)
 data Card = Card {pip :: Pip, suit :: Suit, faceup :: Bool}
@@ -118,7 +108,7 @@ isAce :: Card -> Bool
 isAce (Card p _ _) | p == Ace = True
                  | otherwise = False
 
--- Determine if King [NOT USED]
+-- Determine if King
 isKing :: Card -> Bool
 isKing (Card p _ _) | p == King = True
                   | otherwise = False
@@ -170,16 +160,19 @@ sDeal rand = hideAll (SBoard f c s)
         c = sStartCol shuffled
         s = drop 54 shuffled
 
--- Functions to hide cards
+-- Functions to hide/show cards
 hideAll :: Board -> Board
 hideAll (SBoard f c s) = SBoard f (map hideCards c) s
 
 hideCards :: Column -> Column
-hideCards col = head col : map flipCard facedown
+hideCards col = head col : map flipCardDown facedown
     where facedown = tail col
 
-flipCard :: Card -> Card
-flipCard card = card {faceup = False}
+flipCardDown :: Card -> Card
+flipCardDown card = card {faceup = False}
+
+flipCardUp :: Card -> Card
+flipCardUp card = card {faceup = True}
 
 -- Checks suit and returns an Int indicating to which Foundation pile it belongs
 checkSuit :: Card -> Int
@@ -219,6 +212,7 @@ removeFromReserve res card
     | card `elem` res = filter (/=card) res
     | otherwise = res
 
+-- Add card to the reserver
 addCardRes :: Reserve -> Card -> Reserve
 addCardRes r c = r++[c]
 
@@ -240,10 +234,29 @@ toFoundations (EOBoard f c r)
             heartsuc = if null (f!!2) then Card Ace Hearts True else sCard (last (f!!2))
             spadesuc = if null (f!!3) then Card Ace Spades True else sCard (last (f!!3))
 
+toFoundations (SBoard f c s)
+    | length cards == 13 = moveStackColumnFoundations (SBoard f c s) (concat cards)
+    | otherwise = SBoard f c s
+        where
+            cards = filter (\x -> areAllVisibleCol x && (length.getAllMoveableCardsCol)  x == 13) c
+
+-- Get the visibility of a card: hidden or shown
+getVisible :: Card -> Bool
+getVisible (Card p s u) = u
+
+-- Check if all cards in a column are visible
+areAllVisibleCol :: Column -> Bool
+areAllVisibleCol col = length (map getVisible col) == 13
+
+-- Move a full suit of cards from a column to foundations
+moveStackColumnFoundations :: Board -> Column -> Board
+moveStackColumnFoundations (SBoard f c s) cards = (SBoard (f++[cards]) (removeFromCol' c cards) s)
+
 -- Return number of free spaces in Reserve
 getFreeReserveCount :: Reserve -> Int
 getFreeReserveCount r = 8 - length r
 
+-- Get possible next moves playing column cards to reserve
 getColToResBoards :: Board -> [Board]
 getColToResBoards (EOBoard f c r) = if getFreeReserveCount r > 0 then columnsToReserve (EOBoard f c r) topCards else []
     where topCards = getTopColCards c
@@ -255,35 +268,31 @@ columnsToReserve (EOBoard found col res) (c:cs)
     | getFreeReserveCount res > 0 = EOBoard found (removeFromCol col c) (addCardRes res c) : columnsToReserve (EOBoard found col res) cs
     | otherwise = columnsToReserve (EOBoard found col res) cs
 
--- moveResToCol :: Board -> [Board]
--- moveResToCol (EOBoard found col res) = [EOBoard found c r | c <- f, r <- g]
---     where f = map (`moveToCol` col) res
---           g = map (\y -> removeFromRes' y col res) res
---           topcards = getTopColCards col
-
-getResColBoard :: Board -> [Board]
-getResColBoard board = moveResToCol' board columnsunpack reserveunpack
+-- Functions for getting possible next moves playing reserve cards to columns
+getResColBoards :: Board -> [Board]
+getResColBoards board = moveResToCol board columnsunpack reserveunpack
     where zipped = zipResCol board
           columnsunpack = map snd zipped
           reserveunpack = map fst zipped
 
-moveResToCol' :: Board -> [[Column]] -> [Reserve] -> [Board]
-moveResToCol' (EOBoard found col res) [] (r:rs) = []
-moveResToCol' (EOBoard found col res) (c:cs) [] = []
-moveResToCol' (EOBoard found col res) [] [] = []
-moveResToCol' (EOBoard found col res) (c:cs) (r:rs) = EOBoard found c r :  moveResToCol' (EOBoard found col res) cs rs
+moveResToCol :: Board -> [[Column]] -> [Reserve] -> [Board]
+moveResToCol (EOBoard found col res) [] (r:rs) = []
+moveResToCol (EOBoard found col res) (c:cs) [] = []
+moveResToCol (EOBoard found col res) [] [] = []
+moveResToCol (EOBoard found col res) (c:cs) (r:rs) = EOBoard found c r :  moveResToCol (EOBoard found col res) cs rs
+
+removeColCardFromRes :: Card -> [Column] -> Reserve -> Reserve
+removeColCardFromRes card col res = if sCard card `elem` topcard then filter (/= card) res else res
+    where topcard = getTopColCards col
 
 zipResCol :: Board -> [(Reserve, [Column])]
-zipResCol (EOBoard found col res) = zip (map (\y -> removeFromRes' y col res) res) (map (`moveToCol` col) res)
+zipResCol (EOBoard found col res) = zip (map (\y -> removeColCardFromRes y col res) res) (map (`moveToCol` col) res)
 
 moveToCol :: Card -> [Column] -> [Column]
 moveToCol card [] = []
-moveToCol card cols = map (\x -> (if (pCard (head x) == card) then (card : x) else x)) cols
+moveToCol card cols = map (\x -> (if pCard (head x) == card then card : x else x)) cols
 
-removeFromRes' :: Card -> [Column] -> Reserve -> Reserve
-removeFromRes' card col res = if sCard card `elem` topcard then filter (/= card) res else res
-    where topcard = getTopColCards col
-
+-- Get list of moveable column cards - returns list of sequential cards from column head
 getAllMoveableCardsCol :: Column -> [Card]
 getAllMoveableCardsCol [] = []
 getAllMoveableCardsCol [f] = [f]
@@ -296,10 +305,13 @@ removeFromCol' :: [Column] -> [Card] -> [Column]
 removeFromCol' col cards = map (\\ cards) col
 
 addCardAnyCol :: [Column] -> [Card] -> [Column]
-addCardAnyCol col cards = map (\x -> if head x == sCard (last cards) then cards++x else x) (map (\\cards) (filter (not.null) col))
+addCardAnyCol col cards = map ((\x -> if head x == sCard (last cards) then cards++x else x) . (\\cards)) (filter (not.null) col)
 
-createColBoard :: [Card] -> Board -> Board
-createColBoard cards (EOBoard f c r) = EOBoard f c2 r
+getColToColBoards :: [Card] -> Board -> Board
+getColToColBoards cards (EOBoard f c r) = EOBoard f c2 r
+    where c2 = addCardAnyCol c cards
+
+getColToColBoards cards (SBoard f c u) = EOBoard f c2 u
     where c2 = addCardAnyCol c cards
 
 neededCards :: [Column] -> [Card]
@@ -307,38 +319,89 @@ neededCards [] = []
 neededCards col = map (pCard.head) (filter (not.null) col)
 
 filterMoveableCard :: [Column] -> [Column]
-filterMoveableCard col = filter (\x -> last x `elem` (neededCards col)) (map getAllMoveableCardsCol (filter (not.null) col))
+filterMoveableCard col = filter (\x -> last x `elem` neededCards col) (map getAllMoveableCardsCol (filter (not.null) col))
 
 findMoves :: Board -> [Board]
-findMoves board@(EOBoard f c r) = nub (map toFoundations (list ++ getResColBoard board  ++ getColToResBoards board))
-                                                where list = map (\x -> createColBoard x board) (filterMoveableCard c)
+findMoves board@(EOBoard f c r) = nub (map toFoundations (colToCol ++ getResColBoards board  ++ getColToResBoards board))
+    where colToCol = map (`getColToColBoards` board) (filterMoveableCard c)
+
+findMoves board@(SBoard f c s) = map toFoundations colToCol
+    where colToCol = map (`getColToColBoards` board) (filterMoveableCard c)
+
 
 chooseMove :: Board -> Maybe Board
 chooseMove board@(EOBoard f c r)
+    | null (highestScoringBoards(findMoves board)) = Nothing
+    | board == head (highestScoringBoards(findMoves board)) = Nothing
+    | otherwise = Just (head (highestScoringBoards(findMoves board))) -- HERE?
+
+chooseMove board@(SBoard f c s)
     | null (findMoves board) = Nothing
     | board == head (findMoves board) = Nothing
     | otherwise = Just (head (findMoves board))
 
+-- Get the boards with the highest score 
+highestScoringBoards :: [Board] -> [Board]
+highestScoringBoards b = filter (\x -> getScore x == maximum (map getScore b)) b
+
+-- Get Kings from the column head if they are not empty [NOT USED]
+-- getKingColHead :: [Column] -> [Card]
+-- getKingColHead [] = []
+-- getKingColHead cols = filter isKing (map head (filter (not.null) cols))
+
+-- Check if the second card from the head of the columns in an Ace [NOT USED]
+-- isSecondCardAce :: Board -> Bool
+-- isSecondCardAce board@(EOBoard f c r)
+--     | True `elem` (map (isAce.head.drop 1) c) = True
+--     | otherwise = False
+
+-- takeKingToColumnBoard :: [Board] -> Board
+-- takeKingToReserveBoard [(EOBoards f c r)] = map  `elem` boards
+
+-- moveKingtoEmpty :: Board -> Card -> Board
+-- moveKingtoEmpty board@(EOBoard f c r) card = filter (`elem` Card King _ True)(findMoves board)
+
 haveWon :: Board -> Bool
 haveWon (EOBoard f c r) = sum (map length f) == 52
+haveWon (SBoard f c s) = sum (map length f) == 104
 
+-- Zip Pips with card values, used for score calculation
+cardValues :: [(Pip, Int)]
+cardValues = zip [Ace .. King] [1 .. 13]
+
+-- Get the value of the card, used for score calculation
+getPipValue :: Card -> Int
+getPipValue (Card p s u) = maximum (map (\x -> if p == fst x then snd x else 0) cardValues)
+
+-- Calculate score
 getScore :: Board -> Int
-getScore (EOBoard f c r) = sum (map length f)
+getScore (EOBoard [] c r) = 0
+getScore (EOBoard (f:fs) c r) = if not (null f) then getPipValue (head f) + getScore (EOBoard fs c r) else getScore (EOBoard fs c r)
 
+getScore (SBoard [] c u) = 0
+getScore (SBoard (f:fs) c r) = if not (null f) then getPipValue (head f) + getScore (EOBoard fs c r) else getScore (EOBoard fs c r)
+
+-- Play solitaire from start
 playSolitaire :: Board -> Int
 playSolitaire  board@(EOBoard f c r) = getScore(recurseChooseMove board)
+playSolitaire  board@(SBoard f c u) = getScore(recurseChooseMove board)
 
+-- Choose move recursively
 recurseChooseMove :: Board -> Board
 recurseChooseMove board@(EOBoard f c r)
     | isJust (chooseMove board) = recurseChooseMove ((fromJust.chooseMove) board)
     | otherwise = board
 
--- i = seed, j = number games
+recurseChooseMove board@(SBoard f c u)
+    | isJust (chooseMove board) = recurseChooseMove ((fromJust.chooseMove) board)
+    | otherwise = board
+
+-- Analyse scores i = seed, j = number
 analyseEO :: Int -> Int -> (Int, Int)
-analyseEO i j = (wonCount, average)
+analyseEO i j = (wins, average)
     where num = take j (randoms (mkStdGen i) :: [Int])
           score = sum (map (playSolitaire.eODeal) num)
-          wonCount = length (filter (==52) (map (playSolitaire.eODeal) num))
+          wins = length (filter (==52) (map (playSolitaire.eODeal) num))
           average = score `div` j
 
 {- Paste the contents of this file, including this comment, into your source file, below all
@@ -352,7 +415,7 @@ studentUsername = "aca20bab"
 
 initialBoardDefined = screenshotBoard {- replace XXX with the name of the constant that you defined
                             in step 3 of part 1 -}
-secondBoardDefined = screenshotBoard {- replace YYY with the constant defined in step 5 of part 1,
+secondBoardDefined = sDeal 1 {- replace YYY with the constant defined in step 5 of part 1,
                             or if you have chosen to demonstrate play in a different game
                             of solitaire for part 2, a suitable contstant that will show
                             your play to good effect for that game -}
